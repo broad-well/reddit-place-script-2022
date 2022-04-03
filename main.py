@@ -61,6 +61,7 @@ def closest_color(target_rgb, rgb_colors_array_in):
 def set_pixel_and_check_ratelimit(
     access_token_in, x, y, color_index_in=18, canvas_index=1
 ):
+    tag = canvas_tag(x, y)
     logging.info(
         f"Attempting to place {color_id_to_name(color_index_in)} pixel at {x}, {y}"
     )
@@ -74,9 +75,9 @@ def set_pixel_and_check_ratelimit(
                 "input": {
                     "actionName": "r/replace:set_pixel",
                     "PixelMessageData": {
-                        "coordinate": {"x": x, "y": y},
+                        "coordinate": {"x": x % 1000, "y": y % 1000},
                         "colorIndex": color_index_in,
-                        "canvasIndex": canvas_index,
+                        "canvasIndex": tag,
                     },
                 }
             },
@@ -142,16 +143,20 @@ def set_pixel_and_check_ratelimit(
     # Reddit returns time in ms and we need seconds, so divide by 1000
     return waitTime / 1000
 
+def canvas_tag(x, y):
+    if x <= 1000 and y <= 1000:
+        return 0
+    elif x > 1000 and y <= 1000:
+        return 1
+    elif x <= 1000 and y > 1000:
+        return 2
+    elif x > 1000 and y > 1000:
+        return 3
+    return 0
 
 def get_board(access_token_in):
     global pixel_x_start, pixel_y_start
-    tag = 0
-    if pixel_x_start > 1000 and pixel_y_start <= 1000:
-        tag = 1
-    elif pixel_x_start <= 1000 and pixel_y_start > 1000:
-        tag = 2
-    elif pixel_x_start > 1000 and pixel_y_start > 1000:
-        tag = 3
+    tag = canvas_tag(pixel_x_start, pixel_y_start)
     logging.info("Getting board")
     ws = create_connection(
         "wss://gql-realtime-2.reddit.com/query", origin="https://hot-potato.reddit.com"
@@ -255,9 +260,9 @@ def get_unset_pixel(boardimg, x, y):
 
         target_rgb = pix[x, y]
         new_rgb = closest_color(target_rgb, rgb_colors_array)
-        if pix2[x + pixel_x_start, y + pixel_y_start] != new_rgb:
+        if pix2[(x + pixel_x_start)%1000, (y + pixel_y_start)%1000] != new_rgb:
             logging.debug(
-                f"{pix2[x + pixel_x_start, y + pixel_y_start]}, {new_rgb}, {new_rgb != (69, 42, 0)}, {pix2[x, y] != new_rgb,}"
+                f"{pix2[(x + pixel_x_start)%1000, (y + pixel_y_start)%1000]}, {new_rgb}, {new_rgb != (69, 42, 0)}, {pix2[x%1000, y%1000] != new_rgb,}"
             )
             if new_rgb != (69, 42, 0):
                 unset_pixels.add((x, y, new_rgb))
@@ -266,7 +271,7 @@ def get_unset_pixel(boardimg, x, y):
     logging.info(f'found {len(unset_pixels)} incorrect pixels in current canvas')
     (x, y, new_rgb) = random.choice(list(unset_pixels))
     logging.debug(
-        f"Replacing {pix2[x+pixel_x_start, y+pixel_y_start]} pixel at: {x+pixel_x_start},{y+pixel_y_start} with {new_rgb} color"
+        f"Replacing {pix2[(x+pixel_x_start)%1000, (y+pixel_y_start)%1000]} pixel at: {x+pixel_x_start},{y+pixel_y_start} with {new_rgb} color"
     )
     lock.release()
     return x, y, new_rgb

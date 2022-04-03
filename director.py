@@ -11,7 +11,7 @@ workers_lock = threading.Lock()
 workers = set()
 
 running = False
-target = '392 252 https://cdn.discordapp.com/attachments/958338474950422558/960244865919234148/pixil-frame-0_6.png'
+target = '1181 1324 https://cdn.discordapp.com/attachments/959639366127480842/960289897460138104/pixil-frame-0.png'
 
 async def echo(websocket):
     with workers_lock:
