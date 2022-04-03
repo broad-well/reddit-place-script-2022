@@ -39,6 +39,8 @@ async def echo(websocket):
                 print(f'worker {websocket.remote_address} failed to place {mappings.name_map[int(cs)]} at ({xs}, {ys})')
             else:
                 print('unrecognized msg from worker: ' + msg)
+    except Exception as e:
+        print('error in worker communication:', e)
     finally:
         workers.remove(websocket)
 

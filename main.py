@@ -144,6 +144,14 @@ def set_pixel_and_check_ratelimit(
 
 
 def get_board(access_token_in):
+    global pixel_x_start, pixel_y_start
+    tag = 0
+    if pixel_x_start > 1000 and pixel_y_start <= 1000:
+        tag = 1
+    elif pixel_x_start <= 1000 and pixel_y_start > 1000:
+        tag = 2
+    elif pixel_x_start > 1000 and pixel_y_start > 1000:
+        tag = 3
     logging.info("Getting board")
     ws = create_connection(
         "wss://gql-realtime-2.reddit.com/query", origin="https://hot-potato.reddit.com"
@@ -190,7 +198,7 @@ def get_board(access_token_in):
                             "channel": {
                                 "teamOwner": "AFD2022",
                                 "category": "CANVAS",
-                                "tag": "1",
+                                "tag": str(tag)
                             }
                         }
                     },
@@ -538,11 +546,11 @@ def director_comms():
     def read_target(conn, recvd):
         (targ, targ_xs, targ_ys, img_url) = recvd.split(' ')
         assert targ == 'target'
-        os.environ['ENV_DRAW_X_START'] = str(int(targ_xs) % 1000)
-        os.environ['ENV_DRAW_Y_START'] = str(int(targ_ys) % 1000)
+        os.environ['ENV_DRAW_X_START'] = str(int(targ_xs))
+        os.environ['ENV_DRAW_Y_START'] = str(int(targ_ys))
         global pixel_x_start, pixel_y_start
-        pixel_x_start = int(targ_xs) % 1000
-        pixel_y_start = int(targ_ys) % 1000
+        pixel_x_start = int(targ_xs)
+        pixel_y_start = int(targ_ys)
         logging.info('Got target info from director, downloading image')
         target_img = 'image.png' if '.png' in img_url else 'image.jpg'
         logging.info('getting new target image from ' + img_url)
