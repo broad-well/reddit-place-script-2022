@@ -93,6 +93,7 @@ def set_pixel_and_check_ratelimit(
 
     response = requests.request("POST", url, headers=headers, data=payload)
     logging.debug(f"Received response: {response.text}")
+    global directed_to_run
     # There are 2 different JSON keys for responses to get the next timestamp.
     # If we don't get data, it means we've been rate limited.
     # If we do, a pixel has been successfully placed.
@@ -103,6 +104,14 @@ def set_pixel_and_check_ratelimit(
         logging.info(
             f"{colorama.Fore.RED}Failed placing pixel: rate limited {colorama.Style.RESET_ALL}"
         )
+        # report pixel drawing to the director
+        if conn is not None and conn.connected:
+            conn.send(f'failed-to-place {x} {y} {color_index_in}')
+            logging.info('informed director of failure to place')
+        else:
+            logging.warn('could not report placement to director (disconnected)')
+            logging.error('cannot place colors without director connection. stopping.')
+            directed_to_run = False
     else:
         waitTime = math.floor(
             response.json()["data"]["act"]["data"][0]["data"][
@@ -112,6 +121,14 @@ def set_pixel_and_check_ratelimit(
         logging.info(
             f"{colorama.Fore.GREEN}Succeeded placing pixel {colorama.Style.RESET_ALL}"
         )
+        # report pixel drawing to the director
+        if conn is not None and conn.connected:
+            conn.send(f'placed {x} {y} {color_index_in}')
+            logging.info('informed director of placement')
+        else:
+            logging.warn('could not report placement to director (disconnected)')
+            logging.error('cannot place colors without director connection. stopping.')
+            directed_to_run = False
 
     # THIS COMMENTED CODE LETS YOU DEBUG THREADS FOR TESTING
     # Works perfect with one thread.
@@ -238,6 +255,7 @@ def get_unset_pixel(boardimg, x, y):
                 unset_pixels.add((x, y, new_rgb))
             else:
                 print("TransparentPixel")
+    logging.info(f'found {len(unset_pixels)} incorrect pixels in current canvas')
     (x, y, new_rgb) = random.choice(list(unset_pixels))
     logging.debug(
         f"Replacing {pix2[x+pixel_x_start, y+pixel_y_start]} pixel at: {x+pixel_x_start},{y+pixel_y_start} with {new_rgb} color"
@@ -465,14 +483,6 @@ def task(credentials_index):
                     pixel_y_start + current_c,
                     pixel_color_index,
                 ) + random.randint(0, 20)
-                # report pixel drawing to the director
-                if conn is not None and conn.connected:
-                    conn.send(f'placed {pixel_x_start + current_r} {pixel_y_start + current_c} {pixel_color_index}')
-                    logging.info('informed director of placement')
-                else:
-                    logging.warn('could not report placement to director (disconnected)')
-                    logging.error('cannot place colors without director connection. stopping.')
-                    directed_to_run = False
 
                 current_r += 1
 
