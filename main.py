@@ -208,6 +208,7 @@ def get_unset_pixel(boardimg, x, y):
     pix2 = Image.open(boardimg).convert("RGB").load()
     num_loops = 0
     lock.acquire()
+    unset_pixels = set()
     while True:
         x += 1
 
@@ -219,7 +220,9 @@ def get_unset_pixel(boardimg, x, y):
             if num_loops > 1:
                 target_rgb = pix[0, 0]
                 new_rgb = closest_color(target_rgb, rgb_colors_array)
-                return 0, 0, new_rgb
+                if len(unset_pixels) == 0:
+                    unset_pixels.add((0, 0, new_rgb))
+                break
             y = 0
             num_loops += 1
         logging.debug(f"{x+pixel_x_start}, {y+pixel_y_start}")
@@ -232,12 +235,13 @@ def get_unset_pixel(boardimg, x, y):
                 f"{pix2[x + pixel_x_start, y + pixel_y_start]}, {new_rgb}, {new_rgb != (69, 42, 0)}, {pix2[x, y] != new_rgb,}"
             )
             if new_rgb != (69, 42, 0):
-                logging.debug(
-                    f"Replacing {pix2[x+pixel_x_start, y+pixel_y_start]} pixel at: {x+pixel_x_start},{y+pixel_y_start} with {new_rgb} color"
-                )
-                break
+                unset_pixels.add((x, y, new_rgb))
             else:
                 print("TransparentPixel")
+    (x, y, new_rgb) = random.choice(list(unset_pixels))
+    logging.debug(
+        f"Replacing {pix2[x+pixel_x_start, y+pixel_y_start]} pixel at: {x+pixel_x_start},{y+pixel_y_start} with {new_rgb} color"
+    )
     lock.release()
     return x, y, new_rgb
 
@@ -461,6 +465,14 @@ def task(credentials_index):
                     pixel_y_start + current_c,
                     pixel_color_index,
                 ) + random.randint(0, 20)
+                # report pixel drawing to the director
+                if conn is not None and conn.connected:
+                    conn.send(f'placed {pixel_x_start + current_r} {pixel_y_start + current_c} {pixel_color_index}')
+                    logging.info('informed director of placement')
+                else:
+                    logging.warn('could not report placement to director (disconnected)')
+                    logging.error('cannot place colors without director connection. stopping.')
+                    directed_to_run = False
 
                 current_r += 1
 
@@ -523,6 +535,7 @@ def director_comms():
         pixel_y_start = int(targ_ys) % 1000
         logging.info('Got target info from director, downloading image')
         target_img = 'image.png' if '.png' in img_url else 'image.jpg'
+        logging.info('getting new target image from ' + img_url)
         req = requests.get(img_url, headers={'User-Agent':'Mozilla/5.0'})
         with open(target_img, 'wb') as _file:
             _file.write(req.content)
@@ -534,7 +547,7 @@ def director_comms():
     #ctx.load_verify_locations('mcert.cer')
 
     run = True
-    global directed_to_run
+    global directed_to_run, conn
     while run:
         try:
             logging.info('contacting director at ' + url)
@@ -635,6 +648,7 @@ ENV_DIRECTOR_URL='wss://box.mcmoo.org:4227'"""
     directed_to_run = False
     pixel_x_start = None
     pixel_y_start = None
+    conn = None # connection to director, needed to report color updates
 
     # get color palette
     init_rgb_colors_array()
@@ -653,7 +667,7 @@ ENV_DIRECTOR_URL='wss://box.mcmoo.org:4227'"""
 
     scheduler = sched.scheduler(time.time, time.sleep)
     scheduler_delay = 1800
-    scheduler.enter(scheduler_delay, 1, pull_image, (scheduler,))
+    #scheduler.enter(scheduler_delay, 1, pull_image, (scheduler,))
     thread0 = threading.Thread(target=scheduler.run)
     thread0.start()
 
