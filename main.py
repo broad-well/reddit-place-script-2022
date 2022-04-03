@@ -3,6 +3,8 @@
 import os
 import os.path
 import math
+import ssl
+from urllib.request import urlretrieve
 import requests
 import json
 import time
@@ -14,6 +16,7 @@ import sys
 import subprocess
 import sched
 from io import BytesIO
+import urllib
 from websocket import create_connection
 from requests.auth import HTTPBasicAuth
 from dotenv import load_dotenv
@@ -234,7 +237,7 @@ def get_unset_pixel(boardimg, x, y):
                 )
                 break
             else:
-                print("TransparrentPixel")
+                print("TransparentPixel")
     lock.release()
     return x, y, new_rgb
 
@@ -306,6 +309,7 @@ def task(credentials_index):
         next_pixel_placement_time = math.floor(time.time()) + pixel_place_frequency
 
         # pixel drawing preferences
+        global pixel_x_start, pixel_y_start
         pixel_x_start = int(os.getenv("ENV_DRAW_X_START"))
         pixel_y_start = int(os.getenv("ENV_DRAW_Y_START"))
 
@@ -333,11 +337,16 @@ def task(credentials_index):
         # boolean to place a pixel the moment the script is first run
         # global first_run
         global first_run_counter
+        global directed_to_run
 
         # refresh auth tokens and / or draw a pixel
         while True:
             # reduce CPU usage
             time.sleep(1)
+
+            if not directed_to_run:
+                logging.debug('skipping iteration because not directed to run')
+                continue
 
             # get the current time
             current_timestamp = math.floor(time.time())
@@ -396,7 +405,7 @@ def task(credentials_index):
                     "https://ssl.reddit.com/api/v1/access_token",
                     data=data,
                     auth=HTTPBasicAuth(app_client_id, secret_key),
-                    headers={"User-agent": f"placebot{random.randint(1, 100000)}"},
+                    headers={"User-agent": f"Mplacer{random.randint(1, 100000)}"},
                 )
 
                 logging.debug(f"Received response: {r.text}")
@@ -498,6 +507,61 @@ def pull_image(scheduler: sched.scheduler):
     scheduler.enter(scheduler_delay, 1, pull_image, (scheduler,))
     
 
+def director_comms():
+    url = os.getenv("ENV_DIRECTOR_URL")
+    if url is None:
+        logging.fatal('This bot is managed by a director. Please ask for the Director URL and set it to ENV_DIRECTOR_URL in .env.')
+        exit()
+
+    def read_target(conn, recvd):
+        (targ, targ_xs, targ_ys, img_url) = recvd.split(' ')
+        assert targ == 'target'
+        os.environ['ENV_DRAW_X_START'] = str(int(targ_xs) % 1000)
+        os.environ['ENV_DRAW_Y_START'] = str(int(targ_ys) % 1000)
+        global pixel_x_start, pixel_y_start
+        pixel_x_start = int(targ_xs) % 1000
+        pixel_y_start = int(targ_ys) % 1000
+        logging.info('Got target info from director, downloading image')
+        target_img = 'image.png' if '.png' in img_url else 'image.jpg'
+        req = requests.get(img_url, headers={'User-Agent':'Mozilla/5.0'})
+        with open(target_img, 'wb') as _file:
+            _file.write(req.content)
+        logging.info('Downloaded target image')
+        load_image()
+        conn.send('ok')
+
+    #ctx = ssl.create_default_context()
+    #ctx.load_verify_locations('mcert.cer')
+
+    run = True
+    global directed_to_run
+    while run:
+        try:
+            logging.info('contacting director at ' + url)
+            conn = create_connection(url)# sslopt={'context': ctx})
+            conn.send('hello')
+            read_target(conn, conn.recv())
+            while True:
+                msg = conn.recv()
+                if msg == 'stop':
+                    directed_to_run = False
+                    logging.info('Directed to stop running')
+                    conn.send('ok')
+                elif msg == 'start':
+                    directed_to_run = True
+                    logging.info('Directed to start running')
+                    conn.send('ok')
+                elif msg == 'ping':
+                    conn.send('pong')
+                elif msg == 'stats':
+                    conn.send('[]')
+                elif msg.startswith('target'):
+                    read_target(conn, msg)
+        except Exception as e:
+            logging.error('director connection lost %s, retrying in 5 seconds' % e)
+            time.sleep(5)
+
+
 # # # # #  MAIN # # # # # #
 
 
@@ -535,7 +599,8 @@ ENV_PLACE_SECRET_KEY='["app_secret_key"]'
 ENV_DRAW_X_START="x_position_start_integer"
 ENV_DRAW_Y_START="y_position_start_integer"
 ENV_R_START='["0"]'
-ENV_C_START='["0"]\'"""
+ENV_C_START='["0"]'
+ENV_DIRECTOR_URL='wss://box.mcmoo.org:4227'"""
         )
         print(
             "No .env file found. A template has been created for you.",
@@ -566,6 +631,11 @@ ENV_C_START='["0"]\'"""
     # first_run = True
     first_run_counter = 0
 
+    # director control
+    directed_to_run = False
+    pixel_x_start = None
+    pixel_y_start = None
+
     # get color palette
     init_rgb_colors_array()
 
@@ -586,6 +656,9 @@ ENV_C_START='["0"]\'"""
     scheduler.enter(scheduler_delay, 1, pull_image, (scheduler,))
     thread0 = threading.Thread(target=scheduler.run)
     thread0.start()
+
+    thread2 = threading.Thread(target=director_comms)
+    thread2.start()
 
     # launch a thread for each account specified in .env
     for i in range(num_credentials):
