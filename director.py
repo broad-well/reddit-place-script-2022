@@ -29,9 +29,9 @@ async def echo(websocket):
             elif msg.startswith('hello'):
                 print(f'new client {websocket.remote_address}')
                 bot_version = msg.split(' ')[1]
+                await websocket.send('target ' + target)
                 if int(bot_version) < VERSION:
                     await websocket.send('out-of-date')
-                await websocket.send('target ' + target)
                 if running:
                     await websocket.send('start')
                 else:
