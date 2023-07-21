@@ -438,8 +438,8 @@ def task(credentials_index):
                 # get current pixel position from input image and replacement color
                 current_r, current_c, new_rgb = get_unset_pixel(
                     get_board(access_tokens[credentials_index]),
-                    current_r,
-                    current_c,
+                    0,
+                    0,
                 )
 
                 # get converted color
@@ -554,7 +554,7 @@ def director_comms():
                 elif msg.startswith('target'):
                     read_target(conn, msg)
                 elif msg == 'out-of-date':
-                    logging.warn('Director says this client is out-of-date! Check https://github.com/broad-well/reddit-place-umich-botnet for updates.')
+                    logging.warning('Director says this client is out-of-date! Check https://github.com/broad-well/reddit-place-umich-botnet for updates.')
         except Exception as e:
             logging.error('director connection lost %s, retrying in 5 seconds' % e)
             time.sleep(5)
