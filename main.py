@@ -33,6 +33,8 @@ from mappings import color_map, name_map
 # python main.py --verbose
 verbose_mode = False
 
+VERSION = 1
+
 
 canvas_id = 0
 
@@ -66,9 +68,14 @@ def set_pixel_and_check_ratelimit(
 ):
     debug_dry_run = False
     tag = canvas_index
-    logging.info(
-        f"Attempting to place {color_id_to_name(color_index_in)} pixel at {x-500}, {y} on canvas {canvas_index}"
-    )
+    if tag == 4:
+        logging.info(
+            f"Attempting to place {color_id_to_name(color_index_in)} pixel at {x-500}, {y} on canvas {canvas_index}"
+        )
+    else:
+        logging.info(
+            f"Attempting to place {color_id_to_name(color_index_in)} pixel at {x-500}, {y-1000} on canvas {canvas_index}"
+        )
 
     url = "https://gql-realtime-2.reddit.com/query"
 
@@ -347,19 +354,6 @@ def task(credentials_index):
         pixel_x_start = int(os.getenv("ENV_DRAW_X_START"))
         pixel_y_start = int(os.getenv("ENV_DRAW_Y_START"))
 
-        try:
-            # current pixel row and pixel column being drawn
-            current_r = int(json.loads(os.getenv("ENV_R_START"))[credentials_index])
-            current_c = int(json.loads(os.getenv("ENV_C_START"))[credentials_index])
-        except IndexError:
-            print(
-                "Array length error: are you sure you have an ENV_R_START and ENV_C_START item for every account?\n",
-                "Example for 5 accounts:\n",
-                'ENV_R_START=\'["0","5","6","7","9"]\'\n',
-                'ENV_C_START=\'["0","5","6","8","9"]\'\n',
-                "Note: There can be duplicate entries, but every array must have the same amount of items.",
-            )
-            exit(1)
 
         # string for time until next pixel is drawn
         update_str = ""
@@ -541,7 +535,7 @@ def director_comms():
         try:
             logging.info('contacting director at ' + url)
             conn = create_connection(url)# sslopt={'context': ctx})
-            conn.send('hello')
+            conn.send(f'hello {VERSION}')
             read_target(conn, conn.recv())
             while True:
                 msg = conn.recv()
@@ -559,6 +553,8 @@ def director_comms():
                     conn.send('[]')
                 elif msg.startswith('target'):
                     read_target(conn, msg)
+                elif msg == 'out-of-date':
+                    logging.warn('Director says this client is out-of-date! Check https://github.com/broad-well/reddit-place-umich-botnet for updates.')
         except Exception as e:
             logging.error('director connection lost %s, retrying in 5 seconds' % e)
             time.sleep(5)
@@ -596,11 +592,7 @@ if __name__ == "__main__":
         envfile.write(
             """ENV_PLACE_USERNAME='["developer_username"]'
 ENV_PLACE_PASSWORD='["developer_password"]'
-ENV_DRAW_X_START="x_position_start_integer"
-ENV_DRAW_Y_START="y_position_start_integer"
-ENV_R_START='["0"]'
-ENV_C_START='["0"]'
-ENV_DIRECTOR_URL='wss://box.mcmoo.org:4227'"""
+ENV_DIRECTOR_URL='ws://botnet.umich.place:4523'"""
         )
         print(
             "No .env file found. A template has been created for you.",

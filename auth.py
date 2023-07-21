@@ -44,11 +44,11 @@ def get_access_token(username, password, logger: logging.Logger):
 
     if r.status_code != 200:
         # password is probably invalid
-        logger.exception("{} - Authorization failed!", username)
-        logger.debug("response: {} - {}", r.status_code, r.text)
+        logger.exception(f"{username} - Authorization failed!")
+        logger.debug("response: {r.status_code}, {r.text}", )
         return
     else:
-        logger.info("{} - Authorization successful!", username)
+        logger.info(f"{username} - Authorization successful!")
     logger.info("Obtaining access token...")
     r = client.get(
         "https://new.reddit.com/"

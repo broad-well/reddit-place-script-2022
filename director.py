@@ -13,6 +13,7 @@ workers = set()
 running = False
 # canvas x y
 target = '4 137 54 https://media.discordapp.net/attachments/958338474950422558/1131788232196096080/pixil-frame-0.png'
+VERSION = 2
 
 async def echo(websocket):
     with workers_lock:
@@ -25,8 +26,11 @@ async def echo(websocket):
                 print(websocket.remote_address, 'says pong')
             elif msg == 'bye':
                 break
-            elif msg == 'hello':
+            elif msg.startswith('hello'):
                 print(f'new client {websocket.remote_address}')
+                bot_version = msg.split(' ')[1]
+                if int(bot_version) < VERSION:
+                    await websocket.send('out-of-date')
                 await websocket.send('target ' + target)
                 if running:
                     await websocket.send('start')
