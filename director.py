@@ -13,7 +13,7 @@ workers = set()
 running = False
 # canvas x y
 target = '4 137 54 https://media.discordapp.net/attachments/958338474950422558/1131788232196096080/pixil-frame-0.png'
-VERSION = 2
+VERSION = 3
 
 async def echo(websocket):
     with workers_lock:
