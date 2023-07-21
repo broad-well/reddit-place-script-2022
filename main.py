@@ -15,6 +15,7 @@ import argparse
 import sys
 import subprocess
 import sched
+import auth
 from io import BytesIO
 import urllib
 from websocket import create_connection
@@ -32,6 +33,8 @@ from mappings import color_map, name_map
 # python main.py --verbose
 verbose_mode = False
 
+
+canvas_id = 0
 
 # function to convert rgb tuple to hexadecimal string
 def rgb_to_hex(rgb):
@@ -61,9 +64,10 @@ def closest_color(target_rgb, rgb_colors_array_in):
 def set_pixel_and_check_ratelimit(
     access_token_in, x, y, color_index_in=18, canvas_index=1
 ):
-    tag = canvas_tag(x, y)
+    debug_dry_run = False
+    tag = canvas_index
     logging.info(
-        f"Attempting to place {color_id_to_name(color_index_in)} pixel at {x}, {y}"
+        f"Attempting to place {color_id_to_name(color_index_in)} pixel at {x-500}, {y} on canvas {canvas_index}"
     )
 
     url = "https://gql-realtime-2.reddit.com/query"
@@ -81,24 +85,29 @@ def set_pixel_and_check_ratelimit(
                     },
                 }
             },
-            "query": "mutation setPixel($input: ActInput!) {\n  act(input: $input) {\n    data {\n      ... on BasicMessage {\n        id\n        data {\n          ... on GetUserCooldownResponseMessageData {\n            nextAvailablePixelTimestamp\n            __typename\n          }\n          ... on SetPixelResponseMessageData {\n            timestamp\n            __typename\n          }\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}\n",
+            "query": 'mutation setPixel($input: ActInput!) {\n  act(input: $input) {\n    data {\n      ... on BasicMessage {\n        id\n        data {\n          ... on GetUserCooldownResponseMessageData {\n            nextAvailablePixelTimestamp\n            __typename\n          }\n          ... on SetPixelResponseMessageData {\n            timestamp\n            __typename\n          }\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}\n'
         }
     )
     headers = {
-        "origin": "https://hot-potato.reddit.com",
-        "referer": "https://hot-potato.reddit.com/",
-        "apollographql-client-name": "mona-lisa",
+        "Accept": "*/*",
+        "origin": "https://garlic-bread.reddit.com",
+        "Referer": "https://garlic-bread.reddit.com/",
+        "apollographql-client-name": "garlic-bread",
+        "apollographql-client-version": "0.0.1",
         "Authorization": "Bearer " + access_token_in,
         "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
     }
 
-    response = requests.request("POST", url, headers=headers, data=payload)
-    logging.debug(f"Received response: {response.text}")
+    if not debug_dry_run:
+        logging.debug(f'requesting placement {headers} {payload}')
+        response = requests.request("POST", url, headers=headers, data=payload)
+        logging.debug(f"Received response: {response.text}")
     global directed_to_run
     # There are 2 different JSON keys for responses to get the next timestamp.
     # If we don't get data, it means we've been rate limited.
     # If we do, a pixel has been successfully placed.
-    if response.json()["data"] is None:
+    if not debug_dry_run and response.json()["data"] is None:
         waitTime = math.floor(
             response.json()["errors"][0]["extensions"]["nextAvailablePixelTs"]
         )
@@ -118,7 +127,7 @@ def set_pixel_and_check_ratelimit(
             response.json()["data"]["act"]["data"][0]["data"][
                 "nextAvailablePixelTimestamp"
             ]
-        )
+        ) if not debug_dry_run else 5
         logging.info(
             f"{colorama.Fore.GREEN}Succeeded placing pixel {colorama.Style.RESET_ALL}"
         )
@@ -143,23 +152,13 @@ def set_pixel_and_check_ratelimit(
     # Reddit returns time in ms and we need seconds, so divide by 1000
     return waitTime / 1000
 
-def canvas_tag(x, y):
-    if x <= 1000 and y <= 1000:
-        return 0
-    elif x > 1000 and y <= 1000:
-        return 1
-    elif x <= 1000 and y > 1000:
-        return 2
-    elif x > 1000 and y > 1000:
-        return 3
-    return 0
 
 def get_board(access_token_in):
-    global pixel_x_start, pixel_y_start
-    tag = canvas_tag(pixel_x_start, pixel_y_start)
+    global pixel_x_start, pixel_y_start, canvas_id
+    tag = canvas_id
     logging.info("Getting board")
     ws = create_connection(
-        "wss://gql-realtime-2.reddit.com/query", origin="https://hot-potato.reddit.com"
+        "wss://gql-realtime-2.reddit.com/query", origin="https://garlic-bread.reddit.com"
     )
     ws.send(
         json.dumps(
@@ -179,7 +178,7 @@ def get_board(access_token_in):
                     "variables": {
                         "input": {
                             "channel": {
-                                "teamOwner": "AFD2022",
+                                "teamOwner": "GARLICBREAD",
                                 "category": "CONFIG",
                             }
                         }
@@ -201,7 +200,7 @@ def get_board(access_token_in):
                     "variables": {
                         "input": {
                             "channel": {
-                                "teamOwner": "AFD2022",
+                                "teamOwner": "GARLICBREAD",
                                 "category": "CANVAS",
                                 "tag": str(tag)
                             }
@@ -255,8 +254,8 @@ def get_unset_pixel(boardimg, x, y):
                 break
             y = 0
             num_loops += 1
-        logging.debug(f"{x+pixel_x_start}, {y+pixel_y_start}")
-        logging.debug(f"{x}, {y}, boardimg, {image_width}, {image_height}")
+        # logging.debug(f"{x+pixel_x_start}, {y+pixel_y_start}")
+        # logging.debug(f"{x}, {y}, boardimg, {image_width}, {image_height}")
 
         target_rgb = pix[x, y]
         new_rgb = closest_color(target_rgb, rgb_colors_array)
@@ -398,8 +397,6 @@ def task(credentials_index):
             # refresh access token if necessary
             if (
                 access_tokens[credentials_index] is None
-                or current_timestamp
-                >= access_token_expires_at_timestamp[credentials_index]
             ):
                 logging.info(f"Thread #{credentials_index} :: Refreshing access token")
 
@@ -409,13 +406,6 @@ def task(credentials_index):
                         credentials_index
                     ]
                     password = json.loads(os.getenv("ENV_PLACE_PASSWORD"))[
-                        credentials_index
-                    ]
-                    # note: use https://www.reddit.com/prefs/apps
-                    app_client_id = json.loads(os.getenv("ENV_PLACE_APP_CLIENT_ID"))[
-                        credentials_index
-                    ]
-                    secret_key = json.loads(os.getenv("ENV_PLACE_SECRET_KEY"))[
                         credentials_index
                     ]
                 except IndexError:
@@ -430,40 +420,13 @@ def task(credentials_index):
                     )
                     exit(1)
 
-                data = {
-                    "grant_type": "password",
-                    "username": username,
-                    "password": password,
-                }
-
-                r = requests.post(
-                    "https://ssl.reddit.com/api/v1/access_token",
-                    data=data,
-                    auth=HTTPBasicAuth(app_client_id, secret_key),
-                    headers={"User-agent": f"Mplacer{random.randint(1, 100000)}"},
-                )
-
-                logging.debug(f"Received response: {r.text}")
-                response_data = r.json()
                 try:
-                    access_tokens[credentials_index] = response_data["access_token"]
-                except KeyError:
+                    access_tokens[credentials_index] = auth.get_access_token(username, password, logging)
+                except:
                     repeat_forever = False
                     logging.fatal(f"Bad account {username}")
                     break
                 # access_token_type = response_data["token_type"]  # this is just "bearer"
-                access_token_expires_in_seconds = response_data[
-                    "expires_in"
-                ]  # this is usually "3600"
-                # access_token_scope = response_data["scope"]  # this is usually "*"
-
-                # ts stores the time in seconds
-                access_token_expires_at_timestamp[
-                    credentials_index
-                ] = current_timestamp + int(access_token_expires_in_seconds)
-                logging.info(
-                    f"Received new access token: {access_tokens[credentials_index][:5]}************"
-                )
 
             # draw pixel onto screen
             if access_tokens[credentials_index] is not None and (
@@ -495,7 +458,8 @@ def task(credentials_index):
                     pixel_x_start + current_r,
                     pixel_y_start + current_c,
                     pixel_color_index,
-                ) + random.randint(0, 20)
+                    canvas_id
+                ) + random.randint(3, 8)
 
                 current_r += 1
 
@@ -549,8 +513,10 @@ def director_comms():
         exit()
 
     def read_target(conn, recvd):
-        (targ, targ_xs, targ_ys, img_url) = recvd.split(' ')
+        (targ, targ_canvas, targ_xs, targ_ys, img_url) = recvd.split(' ')
         assert targ == 'target'
+        global canvas_id
+        canvas_id = int(targ_canvas)
         os.environ['ENV_DRAW_X_START'] = str(int(targ_xs))
         os.environ['ENV_DRAW_Y_START'] = str(int(targ_ys))
         global pixel_x_start, pixel_y_start
@@ -630,8 +596,6 @@ if __name__ == "__main__":
         envfile.write(
             """ENV_PLACE_USERNAME='["developer_username"]'
 ENV_PLACE_PASSWORD='["developer_password"]'
-ENV_PLACE_APP_CLIENT_ID='["app_client_id"]'
-ENV_PLACE_SECRET_KEY='["app_secret_key"]'
 ENV_DRAW_X_START="x_position_start_integer"
 ENV_DRAW_Y_START="y_position_start_integer"
 ENV_R_START='["0"]'

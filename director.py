@@ -11,7 +11,8 @@ workers_lock = threading.Lock()
 workers = set()
 
 running = False
-target = '1181 1324 https://cdn.discordapp.com/attachments/959639366127480842/960289897460138104/pixil-frame-0.png'
+# canvas x y
+target = '4 137 54 https://media.discordapp.net/attachments/958338474950422558/1131788232196096080/pixil-frame-0.png'
 
 async def echo(websocket):
     with workers_lock:
@@ -50,7 +51,7 @@ async def echo(websocket):
 
 async def main():
     global target, running
-    async with websockets.serve(echo, '0.0.0.0', 4227): #ssl=ssl_context):
+    async with websockets.serve(echo, '0.0.0.0', 4523): #ssl=ssl_context):
         while True:
             cmd = await ainput('>>')
             if cmd == 'start':
