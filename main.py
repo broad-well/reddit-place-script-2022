@@ -27,32 +27,29 @@ from websocket import create_connection
 import auth
 from mappings import color_map, name_map
 
+VERSION = 3
+
 # Option remains for legacy usage
 # equal to running
 # python main.py --verbose
 verbose_mode = False
-
-VERSION = 3
-
-
 canvas_id = 0
-
-# function to convert rgb tuple to hexadecimal string
 
 
 def rgb_to_hex(rgb):
+    """Function to convert rgb tuple to hexadecimal string."""
     return ("#%02x%02x%02x" % rgb).upper()
 
 
-# Get a more verbose color indicator from a pixel color ID
 def color_id_to_name(color_id):
+    """Get a more verbose color indicator from a pixel color ID."""
     if color_id in name_map.keys():
         return "{} ({})".format(name_map[color_id], str(color_id))
     return "Invalid Color ({})".format(str(color_id))
 
 
-# function to find the closest rgb color from palette to a target rgb color
 def closest_color(target_rgb, rgb_colors_array_in):
+    """Function to find the closest rgb color from palette to a target rgb color."""
     r, g, b = target_rgb[:3]  # trim rgba tuple to rgb if png
 
     color_diffs = []
@@ -63,10 +60,10 @@ def closest_color(target_rgb, rgb_colors_array_in):
     return min(color_diffs)[1]
 
 
-# method to draw a pixel at an x, y coordinate in r/place with a specific color
 def set_pixel_and_check_ratelimit(
     access_token_in, x, y, color_index_in=18, canvas_index=1
 ):
+    """Draw a pixel at an x, y coordinate in r/place with a specific color."""
     debug_dry_run = True
     tag = canvas_index
     if tag == 4:
@@ -290,8 +287,8 @@ def get_unset_pixel(boardimg, x, y):
     return x, y, new_rgb
 
 
-# method to define the color palette array
 def init_rgb_colors_array():
+    """Define the color palette array."""
     global rgb_colors_array
 
     # generate array of available rgb colors we can use
@@ -301,8 +298,8 @@ def init_rgb_colors_array():
     logging.debug(f"Available colors for rgb palette: {rgb_colors_array}")
 
 
-# method to read the input image.jpg file
 def load_image():
+    """Method to read the input image.jpg file."""
     global pix
     global image_width
     global image_height
@@ -335,8 +332,8 @@ def load_image():
     image_width, image_height = im.size
 
 
-# task to draw the input image
 def task(credentials_index):
+    """Task to draw the input image."""
     # whether image should keep drawing itself
     repeat_forever = True
 
