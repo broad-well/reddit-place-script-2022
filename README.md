@@ -1,31 +1,19 @@
-# Reddit Place Script 2022
-
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-
-**Message the bot channel on Discord if you have any questions regarding setup/errors.**
+# Reddit Place Script 2023
 
 ## About
 
-This is a script to draw a JPG onto r/place (<https://www.reddit.com/r/place/>).
+This is a script to draw an image onto r/place (<https://www.reddit.com/r/place/>) with a botnet's control.
 
 ## Requirements
 
-- [git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
-    - Needed for the auto-pull image feature
-    - Run `git --version` in the terminal to check that you have it installed
 - [Python 3](https://www.python.org/downloads/)
     - Run `python3 --version` in the terminal to check that you have it installed
 
-## Clone This Project!
-In your terminal, `cd` into any directory you like, then run
-```
-git clone https://github.com/jc65536/reddit-place-script-2022.git
-```
+## Download the bot
 
-Go into the project directory with cd:
-```
-cd reddit-place-script-2022
-```
+[Download](https://github.com/broad-well/reddit-place-umich-botnet/archive/refs/heads/main.zip) this repository as a zip file, and extract it to a location of choice.
+
+Navigate to this location in Windows Terminal (Windows) or Terminal (macOS).
 
 ## Python Package Requirements
 
