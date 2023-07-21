@@ -39,6 +39,8 @@ VERSION = 3
 canvas_id = 0
 
 # function to convert rgb tuple to hexadecimal string
+
+
 def rgb_to_hex(rgb):
     return ("#%02x%02x%02x" % rgb).upper()
 
@@ -272,7 +274,7 @@ def get_unset_pixel(boardimg, x, y):
         if target_rgb[3] > 50:
             target_rgb = target_rgb[:3]
             new_rgb = closest_color(target_rgb, rgb_colors_array)
-            if pix2[(x + pixel_x_start)%1000, (y + pixel_y_start)%1000] != new_rgb:
+            if pix2[(x + pixel_x_start) % 1000, (y + pixel_y_start) % 1000] != new_rgb:
                 logging.debug(
                     f"{pix2[(x + pixel_x_start)%1000, (y + pixel_y_start)%1000]}, {new_rgb}, {new_rgb != (69, 42, 0)}, {pix2[x%1000, y%1000] != new_rgb,}"
                 )
@@ -358,7 +360,6 @@ def task(credentials_index):
         # pixel drawing preferences
         global pixel_x_start, pixel_y_start
 
-
         # string for time until next pixel is drawn
         update_str = ""
 
@@ -385,10 +386,8 @@ def task(credentials_index):
 
             # log next time until drawing
             time_until_next_draw = next_pixel_placement_time - current_timestamp
-            new_update_str = (
-                str(time_until_next_draw) + " seconds until next pixel is drawn"
-            )
-            if update_str != new_update_str and time_until_next_draw % 10 == 0:
+            new_update_str = f"{math.ceil(time_until_next_draw / 60)} minutes until next pixel is drawn"
+            if update_str != new_update_str and time_until_next_draw % 60 == 0:
                 update_str = new_update_str
                 logging.info(f"Thread #{credentials_index} :: {update_str}")
 
@@ -417,7 +416,8 @@ def task(credentials_index):
                     exit(1)
 
                 try:
-                    access_tokens[credentials_index] = auth.get_access_token(username, password, logging)
+                    access_tokens[credentials_index] = auth.get_access_token(
+                        username, password, logging)
                 except:
                     repeat_forever = False
                     logging.fatal(f"Bad account {username}")
@@ -426,8 +426,8 @@ def task(credentials_index):
 
             # draw pixel onto screen
             if access_tokens[credentials_index] is not None and (
-                current_timestamp >= next_pixel_placement_time
-                or first_run_counter <= credentials_index
+                current_timestamp >= next_pixel_placement_time or
+                first_run_counter <= credentials_index
             ):
 
                 # place pixel immediately
@@ -484,6 +484,7 @@ def task(credentials_index):
 def get_last_modified_commit() -> str:
     return subprocess.run(["git", "log", "-1", "--format=%H", "image.png"], capture_output=True, text=True).stdout
 
+
 def pull_image(scheduler: sched.scheduler):
     print("Attempting to pull image...")
     global last_modified_commit
@@ -501,12 +502,13 @@ def pull_image(scheduler: sched.scheduler):
     else:
         print("Not modified!")
     scheduler.enter(scheduler_delay, 1, pull_image, (scheduler,))
-    
+
 
 def director_comms():
     url = os.getenv("ENV_DIRECTOR_URL")
     if url is None:
-        logging.fatal('This bot is managed by a director. Please ask for the Director URL and set it to ENV_DIRECTOR_URL in .env.')
+        logging.fatal(
+            'This bot is managed by a director. Please ask for the Director URL and set it to ENV_DIRECTOR_URL in .env.')
         exit()
 
     def read_target(conn, recvd):
@@ -523,22 +525,22 @@ def director_comms():
         logging.info('Got target info from director, downloading image')
         target_img = 'image.png' if '.png' in img_url else 'image.jpg'
         logging.info('getting new target image from ' + img_url)
-        req = requests.get(img_url, headers={'User-Agent':'Mozilla/5.0'})
+        req = requests.get(img_url, headers={'User-Agent': 'Mozilla/5.0'})
         with open(target_img, 'wb') as _file:
             _file.write(req.content)
         logging.info('Downloaded target image')
         load_image()
         conn.send('ok')
 
-    #ctx = ssl.create_default_context()
-    #ctx.load_verify_locations('mcert.cer')
+    # ctx = ssl.create_default_context()
+    # ctx.load_verify_locations('mcert.cer')
 
     run = True
     global directed_to_run, conn
     while run:
         try:
             logging.info('contacting director at ' + url)
-            conn = create_connection(url)# sslopt={'context': ctx})
+            conn = create_connection(url)  # sslopt={'context': ctx})
             conn.send(f'hello {VERSION}')
             read_target(conn, conn.recv())
             while True:
@@ -558,7 +560,8 @@ def director_comms():
                 elif msg.startswith('target'):
                     read_target(conn, msg)
                 elif msg == 'out-of-date':
-                    logging.warning('Director says this client is out-of-date! Check https://github.com/broad-well/reddit-place-umich-botnet for updates.')
+                    logging.warning(
+                        'Director says this client is out-of-date! Check https://github.com/broad-well/reddit-place-umich-botnet for updates.')
         except Exception as e:
             logging.error('director connection lost %s, retrying in 5 seconds' % e)
             time.sleep(5)
@@ -631,7 +634,7 @@ ENV_DIRECTOR_URL='ws://botnet.umich.place:4523'"""
     directed_to_run = False
     pixel_x_start = None
     pixel_y_start = None
-    conn = None # connection to director, needed to report color updates
+    conn = None  # connection to director, needed to report color updates
 
     # get color palette
     init_rgb_colors_array()
@@ -650,7 +653,7 @@ ENV_DIRECTOR_URL='ws://botnet.umich.place:4523'"""
 
     scheduler = sched.scheduler(time.time, time.sleep)
     scheduler_delay = 1800
-    #scheduler.enter(scheduler_delay, 1, pull_image, (scheduler,))
+    # scheduler.enter(scheduler_delay, 1, pull_image, (scheduler,))
     thread0 = threading.Thread(target=scheduler.run)
     thread0.start()
 
