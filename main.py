@@ -33,7 +33,7 @@ from mappings import color_map, name_map
 # python main.py --verbose
 verbose_mode = False
 
-VERSION = 1
+VERSION = 2
 
 
 canvas_id = 0
@@ -71,6 +71,10 @@ def set_pixel_and_check_ratelimit(
     if tag == 4:
         logging.info(
             f"Attempting to place {color_id_to_name(color_index_in)} pixel at {x-500}, {y} on canvas {canvas_index}"
+        )
+    elif tag == 2:
+        logging.info(
+            f"Attempting to place {color_id_to_name(color_index_in)} pixel at {x+500}, {y-1000} on canvas {canvas_index}"
         )
     else:
         logging.info(
@@ -241,7 +245,7 @@ def get_board(access_token_in):
 def get_unset_pixel(boardimg, x, y):
     pixel_x_start = int(os.getenv("ENV_DRAW_X_START"))
     pixel_y_start = int(os.getenv("ENV_DRAW_Y_START"))
-    pix2 = Image.open(boardimg).convert("RGB").load()
+    pix2 = Image.open(boardimg).convert("RGBA").load()
     num_loops = 0
     lock.acquire()
     unset_pixels = set()
@@ -255,25 +259,29 @@ def get_unset_pixel(boardimg, x, y):
         if y >= image_height:
             if num_loops > 1:
                 target_rgb = pix[0, 0]
-                new_rgb = closest_color(target_rgb, rgb_colors_array)
-                if len(unset_pixels) == 0:
-                    unset_pixels.add((0, 0, new_rgb))
-                break
+                if target_rgb[3] > 50:
+                    target_rgb = target_rgb[:3]
+                    new_rgb = closest_color(target_rgb, rgb_colors_array)
+                    if len(unset_pixels) == 0:
+                        unset_pixels.add((0, 0, new_rgb))
+                    break
             y = 0
             num_loops += 1
         # logging.debug(f"{x+pixel_x_start}, {y+pixel_y_start}")
         # logging.debug(f"{x}, {y}, boardimg, {image_width}, {image_height}")
 
         target_rgb = pix[x, y]
-        new_rgb = closest_color(target_rgb, rgb_colors_array)
-        if pix2[(x + pixel_x_start)%1000, (y + pixel_y_start)%1000] != new_rgb:
-            logging.debug(
-                f"{pix2[(x + pixel_x_start)%1000, (y + pixel_y_start)%1000]}, {new_rgb}, {new_rgb != (69, 42, 0)}, {pix2[x%1000, y%1000] != new_rgb,}"
-            )
-            if new_rgb != (69, 42, 0):
-                unset_pixels.add((x, y, new_rgb))
-            else:
-                print("TransparentPixel")
+        if target_rgb[3] > 50:
+            target_rgb = target_rgb[:3]
+            new_rgb = closest_color(target_rgb, rgb_colors_array)
+            if pix2[(x + pixel_x_start)%1000, (y + pixel_y_start)%1000] != new_rgb:
+                logging.debug(
+                    f"{pix2[(x + pixel_x_start)%1000, (y + pixel_y_start)%1000]}, {new_rgb}, {new_rgb != (69, 42, 0)}, {pix2[x%1000, y%1000] != new_rgb,}"
+                )
+                if new_rgb != (69, 42, 0):
+                    unset_pixels.add((x, y, new_rgb))
+                else:
+                    print("TransparentPixel")
     logging.info(f'found {len(unset_pixels)} incorrect pixels in current canvas')
     (x, y, new_rgb) = random.choice(list(unset_pixels))
     logging.debug(
@@ -351,8 +359,8 @@ def task(credentials_index):
 
         # pixel drawing preferences
         global pixel_x_start, pixel_y_start
-        pixel_x_start = int(os.getenv("ENV_DRAW_X_START"))
-        pixel_y_start = int(os.getenv("ENV_DRAW_Y_START"))
+        pixel_x_start = 0
+        pixel_y_start = 0
 
 
         # string for time until next pixel is drawn
@@ -408,8 +416,6 @@ def task(credentials_index):
                         "Example for 2 accounts:\n",
                         'ENV_PLACE_USERNAME=\'["Username1", "Username2]\'\n',
                         'ENV_PLACE_PASSWORD=\'["Password", "Password"]\'\n',
-                        'ENV_PLACE_APP_CLIENT_ID=\'["NBVSIBOPVAINCVIAVBOVV", "VNOPSNSJVQNVNJVSNVDV"]\'\n',
-                        'ENV_PLACE_SECRET_KEY=\'["INSVDSINDJV_SVTNNJSNVNJV", "ANIJCINLLPJCSCOJNCA_ASDV"]\'\n',
                         "Note: There can be duplicate entries, but every array must have the same amount of items.",
                     )
                     exit(1)
