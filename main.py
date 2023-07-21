@@ -33,7 +33,7 @@ from mappings import color_map, name_map
 # python main.py --verbose
 verbose_mode = False
 
-VERSION = 2
+VERSION = 3
 
 
 canvas_id = 0
@@ -66,7 +66,7 @@ def closest_color(target_rgb, rgb_colors_array_in):
 def set_pixel_and_check_ratelimit(
     access_token_in, x, y, color_index_in=18, canvas_index=1
 ):
-    debug_dry_run = False
+    debug_dry_run = True
     tag = canvas_index
     if tag == 4:
         logging.info(
@@ -243,8 +243,6 @@ def get_board(access_token_in):
 
 
 def get_unset_pixel(boardimg, x, y):
-    pixel_x_start = int(os.getenv("ENV_DRAW_X_START"))
-    pixel_y_start = int(os.getenv("ENV_DRAW_Y_START"))
     pix2 = Image.open(boardimg).convert("RGBA").load()
     num_loops = 0
     lock.acquire()
@@ -359,8 +357,6 @@ def task(credentials_index):
 
         # pixel drawing preferences
         global pixel_x_start, pixel_y_start
-        pixel_x_start = 0
-        pixel_y_start = 0
 
 
         # string for time until next pixel is drawn
@@ -453,6 +449,7 @@ def task(credentials_index):
                 pixel_color_index = color_map[new_rgb_hex]
 
                 # draw the pixel onto r/place
+                logging.debug(f"PLACEMENT {pixel_x_start} {pixel_y_start} {current_c} {current_r}")
                 next_pixel_placement_time = set_pixel_and_check_ratelimit(
                     access_tokens[credentials_index],
                     pixel_x_start + current_r,
@@ -520,6 +517,7 @@ def director_comms():
         os.environ['ENV_DRAW_X_START'] = str(int(targ_xs))
         os.environ['ENV_DRAW_Y_START'] = str(int(targ_ys))
         global pixel_x_start, pixel_y_start
+        logging.debug(f"TARGET {targ} {targ_canvas} {targ_xs} {targ_ys}")
         pixel_x_start = int(targ_xs)
         pixel_y_start = int(targ_ys)
         logging.info('Got target info from director, downloading image')
