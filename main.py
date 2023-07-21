@@ -33,7 +33,7 @@ from mappings import color_map, name_map
 # python main.py --verbose
 verbose_mode = False
 
-VERSION = 3
+VERSION = 4
 
 
 canvas_id = 0
@@ -167,7 +167,7 @@ def set_pixel_and_check_ratelimit(
 def get_board(access_token_in):
     global pixel_x_start, pixel_y_start, canvas_id
     tag = canvas_id
-    logging.info("Getting board")
+    logging.info(f"Getting board {tag}")
     ws = create_connection(
         "wss://gql-realtime-2.reddit.com/query", origin="https://garlic-bread.reddit.com"
     )
@@ -269,12 +269,13 @@ def get_unset_pixel(boardimg, x, y):
         # logging.debug(f"{x}, {y}, boardimg, {image_width}, {image_height}")
 
         target_rgb = pix[x, y]
+        logging.debug(f'target_rgb at {(x,y)} is {target_rgb}')
         if target_rgb[3] > 50:
             target_rgb = target_rgb[:3]
             new_rgb = closest_color(target_rgb, rgb_colors_array)
-            if pix2[(x + pixel_x_start)%1000, (y + pixel_y_start)%1000] != new_rgb:
+            if pix2[(x + pixel_x_start)%1000, (y + pixel_y_start)%1000][:3] != new_rgb:
                 logging.debug(
-                    f"{pix2[(x + pixel_x_start)%1000, (y + pixel_y_start)%1000]}, {new_rgb}, {new_rgb != (69, 42, 0)}, {pix2[x%1000, y%1000] != new_rgb,}"
+                    f"{(x + pixel_x_start, y + pixel_y_start)} incorrect: {pix2[(x + pixel_x_start)%1000, (y + pixel_y_start)%1000][:3]}, {new_rgb}, {new_rgb != (69, 42, 0)}, {pix2[x%1000, y%1000][:3] != new_rgb,}"
                 )
                 if new_rgb != (69, 42, 0):
                     unset_pixels.add((x, y, new_rgb))
