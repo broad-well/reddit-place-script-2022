@@ -1,11 +1,12 @@
 import asyncio
 import pathlib
 import ssl
-import websockets
-import mappings
 import threading
+
+import websockets
 from aioconsole import ainput
 
+import mappings
 
 workers_lock = threading.Lock()
 workers = set()

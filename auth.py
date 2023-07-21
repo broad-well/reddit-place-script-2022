@@ -1,8 +1,10 @@
-import requests
-from bs4 import BeautifulSoup
-import time
 import json
 import logging
+import time
+
+import requests
+from bs4 import BeautifulSoup
+
 
 def get_access_token(username, password, logger: logging.Logger):
     while True:

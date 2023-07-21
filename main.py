@@ -1,31 +1,30 @@
 #!/usr/bin/env python3
 
+import argparse
+import json
+import logging
+import math
 import os
 import os.path
-import math
-import ssl
-from urllib.request import urlretrieve
-import requests
-import json
-import time
-import threading
-import logging
-import colorama
-import argparse
-import sys
-import subprocess
-import sched
-import auth
-from io import BytesIO
-import urllib
-from websocket import create_connection
-from requests.auth import HTTPBasicAuth
-from dotenv import load_dotenv
-from PIL import ImageColor
-from PIL import Image
 import random
+import sched
+import ssl
+import subprocess
+import sys
+import threading
+import time
+import urllib
+from io import BytesIO
+from urllib.request import urlretrieve
 
+import colorama
+import requests
+from dotenv import load_dotenv
+from PIL import Image, ImageColor
+from requests.auth import HTTPBasicAuth
+from websocket import create_connection
 
+import auth
 from mappings import color_map, name_map
 
 # Option remains for legacy usage
