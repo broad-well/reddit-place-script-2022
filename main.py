@@ -595,8 +595,8 @@ if __name__ == "__main__":
     else:
         envfile = open(".env", "w")
         envfile.write(
-            """ENV_PLACE_USERNAME='["developer_username"]'
-ENV_PLACE_PASSWORD='["developer_password"]'
+            """ENV_PLACE_USERNAME='["username"]'
+ENV_PLACE_PASSWORD='["password"]'
 ENV_DIRECTOR_URL='ws://botnet.umich.place:4523'"""
         )
         print(

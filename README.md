@@ -4,6 +4,10 @@
 
 This is a script to draw an image onto r/place (<https://www.reddit.com/r/place/>) with a botnet's control.
 
+## Installation Video (Windows)
+
+[Watch the installation video](https://cdn.discordapp.com/attachments/959639366127480842/1131997818643550248/2023-07-21_13-09-47.mp4)
+
 ## Requirements
 
 - [Python 3](https://www.python.org/downloads/)
@@ -44,14 +48,14 @@ Make a copy of `.env_TEMPLATE` called `.env`, and place it in the project direct
 Put in the following contents:
 
 ```text
-ENV_PLACE_USERNAME='["developer_username"]'
-ENV_PLACE_PASSWORD='["developer_password"]'
+ENV_PLACE_USERNAME='["username"]'
+ENV_PLACE_PASSWORD='["password"]'
 ENV_DIRECTOR_URL='ws://botnet.umich.place:4523'
 ```
 
-- ENV_PLACE_USERNAME is an array of usernames of developer accounts
-- ENV_PLACE_PASSWORD is an array of the passwords of developer accounts
-- ENV_DIRECTOR_URL is the URL of the Botnet Director. Do not change.
+- ENV_PLACE_USERNAME is an array of usernames of Reddit accounts
+- ENV_PLACE_PASSWORD is an array of the passwords of Reddit accounts, aligned with ENV_PLACE_USERNAME
+- ENV_DIRECTOR_URL is the URL of the Botnet Director
 
 ## Run the Script
 
@@ -64,8 +68,8 @@ python3 main.py
 If you want two threads drawing the image at once you could have a setup like this:
 
 ```text
-ENV_PLACE_USERNAME='["developer_username_1", "developer_username_2"]'
-ENV_PLACE_PASSWORD='["developer_password_1", "developer_password_2"]'
+ENV_PLACE_USERNAME='["username_1", "username_2"]'
+ENV_PLACE_PASSWORD='["password_1", "password_2"]'
 ENV_DIRECTOR_URL='ws://botnet.umich.place:4523'
 ```
 
