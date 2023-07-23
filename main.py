@@ -4,6 +4,7 @@ import os
 import os.path
 import math
 import ssl
+from typing import Optional, Tuple
 from urllib.request import urlretrieve
 import requests
 import json
@@ -164,9 +165,10 @@ def set_pixel_and_check_ratelimit(
     return waitTime / 1000
 
 
-def get_board(access_token_in):
+def get_board(access_token_in, tag=None):
     global pixel_x_start, pixel_y_start, canvas_id
-    tag = canvas_id
+    if tag is None:
+        tag = canvas_id
     logging.info(f"Getting board {tag}")
     ws = create_connection(
         "wss://gql-realtime-2.reddit.com/query", origin="https://garlic-bread.reddit.com"
@@ -242,7 +244,7 @@ def get_board(access_token_in):
     return boardimg
 
 
-def get_unset_pixel(boardimg, x, y):
+def get_unset_pixel(boardimg, x, y) -> Optional[Tuple[int, int, Tuple[int, int, int]]]:
     pix2 = Image.open(boardimg).convert("RGBA").load()
     num_loops = 0
     lock.acquire()
@@ -255,21 +257,14 @@ def get_unset_pixel(boardimg, x, y):
             x = 0
 
         if y >= image_height:
-            if num_loops > 1:
-                target_rgb = pix[0, 0]
-                if target_rgb[3] > 50:
-                    target_rgb = target_rgb[:3]
-                    new_rgb = closest_color(target_rgb, rgb_colors_array)
-                    if len(unset_pixels) == 0:
-                        unset_pixels.add((0, 0, new_rgb))
-                    break
+            if num_loops >= 1:
+                break
             y = 0
             num_loops += 1
         # logging.debug(f"{x+pixel_x_start}, {y+pixel_y_start}")
         # logging.debug(f"{x}, {y}, boardimg, {image_width}, {image_height}")
 
         target_rgb = pix[x, y]
-        logging.debug(f'target_rgb at {(x,y)} is {target_rgb}')
         if target_rgb[3] > 50:
             target_rgb = target_rgb[:3]
             new_rgb = closest_color(target_rgb, rgb_colors_array)
@@ -282,6 +277,10 @@ def get_unset_pixel(boardimg, x, y):
                 else:
                     print("TransparentPixel")
     logging.info(f'found {len(unset_pixels)} incorrect pixels in current canvas')
+    if len(unset_pixels) == 0:
+        lock.release()
+        return None
+    # Selection logic here
     (x, y, new_rgb) = random.choice(list(unset_pixels))
     logging.debug(
         f"Replacing {pix2[(x+pixel_x_start)%1000, (y+pixel_y_start)%1000]} pixel at: {x+pixel_x_start},{y+pixel_y_start} with {new_rgb} color"
@@ -290,14 +289,18 @@ def get_unset_pixel(boardimg, x, y):
     return x, y, new_rgb
 
 
+def make_rgb_colors_array():
+    out = []
+    for color_hex, color_index in color_map.items():
+        rgb_array = ImageColor.getcolor(color_hex, "RGB")
+        out.append(rgb_array)
+    return out
+
+
 # method to define the color palette array
 def init_rgb_colors_array():
     global rgb_colors_array
-
-    # generate array of available rgb colors we can use
-    for color_hex, color_index in color_map.items():
-        rgb_array = ImageColor.getcolor(color_hex, "RGB")
-        rgb_colors_array.append(rgb_array)
+    rgb_colors_array = make_rgb_colors_array()
     logging.debug(f"Available colors for rgb palette: {rgb_colors_array}")
 
 
@@ -335,17 +338,12 @@ def load_image():
     image_width, image_height = im.size
 
 
-# task to draw the input image
+# task to draw one important incorrect pixel selected from the input image
 def task(credentials_index):
     # whether image should keep drawing itself
     repeat_forever = True
 
     while True:
-        # try:
-        # global variables for script
-        # note: reddit limits us to place 1 pixel every 5 minutes, so I am setting it to
-        # 5 minutes and 30 seconds per pixel
-        # pixel_place_frequency = 330
         if os.getenv("ENV_UNVERIFIED_PLACE_FREQUENCY") is not None:
             if bool(os.getenv("ENV_UNVERIFIED_PLACE_FREQUENCY")):
                 pixel_place_frequency = 1230
@@ -375,7 +373,8 @@ def task(credentials_index):
         # refresh auth tokens and / or draw a pixel
         while True:
             # reduce CPU usage
-            time.sleep(1)
+            time.sleep(2)
+            logging.debug('lock is locked? ' + str(lock.locked()))
 
             if not directed_to_run:
                 logging.debug('skipping iteration because not directed to run')
@@ -439,37 +438,35 @@ def task(credentials_index):
                 # target_rgb = pix[current_r, current_c]
 
                 # get current pixel position from input image and replacement color
-                current_r, current_c, new_rgb = get_unset_pixel(
+                optional_pixel = get_unset_pixel(
                     get_board(access_tokens[credentials_index]),
                     0,
                     0,
                 )
 
-                # get converted color
-                new_rgb_hex = rgb_to_hex(new_rgb)
-                pixel_color_index = color_map[new_rgb_hex]
+                logging.debug(f"Thread #{credentials_index} :: optional_pixel={optional_pixel}")
+                if optional_pixel is not None:
+                    current_r, current_c, new_rgb = optional_pixel
 
-                # draw the pixel onto r/place
-                logging.debug(f"PLACEMENT {pixel_x_start} {pixel_y_start} {current_c} {current_r}")
-                next_pixel_placement_time = set_pixel_and_check_ratelimit(
-                    access_tokens[credentials_index],
-                    pixel_x_start + current_r,
-                    pixel_y_start + current_c,
-                    pixel_color_index,
-                    canvas_id
-                ) + random.randint(3, 8)
+                    # get converted color
+                    new_rgb_hex = rgb_to_hex(new_rgb)
+                    pixel_color_index = color_map[new_rgb_hex]
 
-                current_r += 1
+                    # draw the pixel onto r/place
+                    logging.debug(f"PLACEMENT {pixel_x_start} {pixel_y_start} {current_c} {current_r}")
+                    next_pixel_placement_time = set_pixel_and_check_ratelimit(
+                        access_tokens[credentials_index],
+                        pixel_x_start + current_r,
+                        pixel_y_start + current_c,
+                        pixel_color_index,
+                        canvas_id
+                    ) + random.randint(3, 8)
+                else:
+                    logging.info(f"Thread {credentials_index} :: No pixels are wrong! Taking a 5 second break")
+                    time.sleep(3) # the last second is slept at the beginning of the next loop iteration
 
-                # go back to first column when reached end of a row while drawing
-                if current_r >= image_width:
-                    current_r = 0
-                    current_c += 1
 
-                # exit when all pixels drawn
-                if current_c >= image_height:
-                    logging.info(f"Thread #{credentials_index} :: image completed")
-                    break
+
         # except:
         #     print("__________________")
         #     print("Thread #" + str(credentials_index))
