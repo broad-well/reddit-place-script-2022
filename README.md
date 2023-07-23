@@ -6,12 +6,14 @@ This is a script to draw an image onto r/place (<https://www.reddit.com/r/place/
 
 ## Installation Video (Windows)
 
-[Watch the installation video](https://cdn.discordapp.com/attachments/959639366127480842/1131997818643550248/2023-07-21_13-09-47.mp4)
+[Watch the installation video](https://cdn.discordapp.com/attachments/959639366127480842/1131997818643550248/2023-07-21_13-09-47.mp4), install [Tor Browser](https://www.torproject.org/download/), open it, and connect to Tor through it.
 
 ## Requirements
 
 - [Python 3](https://www.python.org/downloads/)
     - Run `python3 --version` in the terminal to check that you have it installed
+- [Tor Browser](https://www.torproject.org/download/)
+    - Tor Browser **MUST** be open and connected. If you see "Connection refused" as an error, connect Tor Browser.
 
 ## Download the bot
 

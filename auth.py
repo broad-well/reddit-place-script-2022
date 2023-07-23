@@ -1,14 +1,16 @@
-import requests
+from requests_tor import RequestsTor
 from bs4 import BeautifulSoup
 import time
 import json
 import logging
 
+rt = RequestsTor()
+
 def get_access_token(username, password, logger: logging.Logger):
     while True:
         try:
             logger.debug('Getting access token for ' + username)
-            client = requests.Session()
+            client = rt.Session()
             client.headers.update(
                 {
                     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/115.0",

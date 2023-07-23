@@ -7,6 +7,7 @@ import ssl
 from typing import Optional, Tuple
 from urllib.request import urlretrieve
 import requests
+from requests_tor import RequestsTor
 import json
 import time
 import threading
@@ -110,10 +111,11 @@ def set_pixel_and_check_ratelimit(
         "Content-Type": "application/json",
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36"
     }
+    rt = RequestsTor()
 
     if not debug_dry_run:
         logging.debug(f'requesting placement {headers} {payload}')
-        response = requests.request("POST", url, headers=headers, data=payload)
+        response = rt.request("POST", url, headers=headers, data=payload)
         logging.debug(f"Received response: {response.text}")
     global directed_to_run
     # There are 2 different JSON keys for responses to get the next timestamp.
@@ -160,6 +162,29 @@ def set_pixel_and_check_ratelimit(
     # import code
 
     # code.interact(local=locals())
+
+    # Self-check: Is this effective?
+    time.sleep(10)
+    logging.debug('self-checking if placement went through')
+    response = rt.request("POST", url, headers=headers, data=json.dumps(
+        {
+            "operationName": "pixelHistory", 
+            "variables":{
+                "input":{
+                    "actionName": "r/replace:get_tile_history",
+                    "PixelMessageData": {
+                        "coordinate":{
+                            "x":x,"y":y
+                        },
+                        "colorIndex":0,
+                        "canvasIndex":tag
+                    }
+                }
+            },
+            "query": "mutation pixelHistory($input: ActInput!) {\n  act(input: $input) {\n    data {\n      ... on BasicMessage {\n        id\n        data {\n          ... on GetTileHistoryResponseMessageData {\n            lastModifiedTimestamp\n            userInfo {\n              userID\n              username\n              __typename\n            }\n            __typename\n          }\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}\n"
+        }
+    ))
+    logging.warn(f"{tag} {x} {y} last placed by {response.json()['data']['act']['data'][0]['data']['userInfo']['username']}")
 
     # Reddit returns time in ms and we need seconds, so divide by 1000
     return waitTime / 1000
@@ -374,7 +399,6 @@ def task(credentials_index):
         while True:
             # reduce CPU usage
             time.sleep(2)
-            logging.debug('lock is locked? ' + str(lock.locked()))
 
             if not directed_to_run:
                 logging.debug('skipping iteration because not directed to run')
@@ -460,7 +484,7 @@ def task(credentials_index):
                         pixel_y_start + current_c,
                         pixel_color_index,
                         canvas_id
-                    ) + random.randint(3, 8)
+                    ) + random.randint(60, 120)
                 else:
                     logging.info(f"Thread {credentials_index} :: No pixels are wrong! Taking a 5 second break")
                     time.sleep(3) # the last second is slept at the beginning of the next loop iteration
