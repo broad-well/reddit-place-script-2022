@@ -66,7 +66,7 @@ def closest_color(target_rgb, rgb_colors_array_in):
 
 # method to draw a pixel at an x, y coordinate in r/place with a specific color
 def set_pixel_and_check_ratelimit(
-    access_token_in, x, y, color_index_in=18, canvas_index=1
+    access_token_in, x, y, color_index_in=18, canvas_index=1, credentials_index=-1
 ):
     debug_dry_run = False
     tag = canvas_index
@@ -121,6 +121,7 @@ def set_pixel_and_check_ratelimit(
     # There are 2 different JSON keys for responses to get the next timestamp.
     # If we don't get data, it means we've been rate limited.
     # If we do, a pixel has been successfully placed.
+    success = False
     if not debug_dry_run and response.json()["data"] is None:
         waitTime = math.floor(
             response.json()["errors"][0]["extensions"]["nextAvailablePixelTs"]
@@ -136,6 +137,7 @@ def set_pixel_and_check_ratelimit(
             logging.warning('could not report placement to director (disconnected)')
             logging.error('cannot place colors without director connection. stopping.')
             directed_to_run = False
+        success = False
     else:
         waitTime = math.floor(
             response.json()["data"]["act"]["data"][0]["data"][
@@ -145,12 +147,13 @@ def set_pixel_and_check_ratelimit(
         logging.info(
             f"{colorama.Fore.GREEN}Succeeded placing pixel {colorama.Style.RESET_ALL}"
         )
+        success = True
         # report pixel drawing to the director
         if conn is not None and conn.connected:
             conn.send(f'placed {x} {y} {color_index_in}')
             logging.info('informed director of placement')
         else:
-            logging.warn('could not report placement to director (disconnected)')
+            logging.warning('could not report placement to director (disconnected)')
             logging.error('cannot place colors without director connection. stopping.')
             directed_to_run = False
 
@@ -165,26 +168,36 @@ def set_pixel_and_check_ratelimit(
 
     # Self-check: Is this effective?
     time.sleep(10)
-    logging.debug('self-checking if placement went through')
-    response = rt.request("POST", url, headers=headers, data=json.dumps(
-        {
-            "operationName": "pixelHistory", 
-            "variables":{
-                "input":{
-                    "actionName": "r/replace:get_tile_history",
-                    "PixelMessageData": {
-                        "coordinate":{
-                            "x":x,"y":y
-                        },
-                        "colorIndex":0,
-                        "canvasIndex":tag
+    if success:
+        logging.debug('self-checking if placement went through')
+        response = rt.request("POST", url, headers=headers, data=json.dumps(
+            {
+                "operationName": "pixelHistory", 
+                "variables":{
+                    "input":{
+                        "actionName": "r/replace:get_tile_history",
+                        "PixelMessageData": {
+                            "coordinate":{
+                                "x":x,"y":y
+                            },
+                            "colorIndex":0,
+                            "canvasIndex":tag
+                        }
                     }
-                }
-            },
-            "query": "mutation pixelHistory($input: ActInput!) {\n  act(input: $input) {\n    data {\n      ... on BasicMessage {\n        id\n        data {\n          ... on GetTileHistoryResponseMessageData {\n            lastModifiedTimestamp\n            userInfo {\n              userID\n              username\n              __typename\n            }\n            __typename\n          }\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}\n"
-        }
-    ))
-    logging.warn(f"{tag} {x} {y} last placed by {response.json()['data']['act']['data'][0]['data']['userInfo']['username']}")
+                },
+                "query": "mutation pixelHistory($input: ActInput!) {\n  act(input: $input) {\n    data {\n      ... on BasicMessage {\n        id\n        data {\n          ... on GetTileHistoryResponseMessageData {\n            lastModifiedTimestamp\n            userInfo {\n              userID\n              username\n              __typename\n            }\n            __typename\n          }\n          __typename\n        }\n        __typename\n      }\n      __typename\n    }\n    __typename\n  }\n}\n"
+            }
+        ))
+        actual_placed = response.json()['data']['act']['data'][0]['data']['userInfo']['username']
+        logging.warning(f"{tag} {x} {y} last placed by {actual_placed}")
+        if credentials_index != -1:
+            # was this me?
+            if actual_placed == json.loads(os.getenv("ENV_PLACE_USERNAME"))[
+                credentials_index
+            ]:
+                logging.info(f"{colorama.Fore.GREEN} Bot account {actual_placed} is effective! {colorama.Style.RESET_ALL}")
+            else:
+                logging.warning(f"{colorama.Fore.RED} Bot account {actual_placed} is NOT effective! {colorama.Style.RESET_ALL}")
 
     # Reddit returns time in ms and we need seconds, so divide by 1000
     return waitTime / 1000
@@ -483,8 +496,9 @@ def task(credentials_index):
                         pixel_x_start + current_r,
                         pixel_y_start + current_c,
                         pixel_color_index,
-                        canvas_id
-                    ) + random.randint(60, 120)
+                        canvas_id,
+                        credentials_index=credentials_index
+                    ) + random.randint(20, 50)
                 else:
                     logging.info(f"Thread {credentials_index} :: No pixels are wrong! Taking a 5 second break")
                     time.sleep(3) # the last second is slept at the beginning of the next loop iteration
