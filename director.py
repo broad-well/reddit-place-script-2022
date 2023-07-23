@@ -19,7 +19,7 @@ workers = set()
 running = False
 # canvas x y
 # target = '2 175 633 https://cdn.discordapp.com/attachments/959639366127480842/1132058879765778592/19x-target.png'
-target = '2 174 632 https://cdn.discordapp.com/attachments/1132134506644643861/1132175214445330463/pixil-frame-0-17.png'
+target = '2 157 632 https://cdn.discordapp.com/attachments/1132134506644643861/1132517400240193617/pixil-frame-0-38.png'
 VERSION = 4
 
 async def echo(websocket):
@@ -77,11 +77,12 @@ async def main():
                     websockets.broadcast(workers, 'target ' + target)
                 elif cmd == '#?':
                     print('we have', len(workers), 'connected')
-                elif cmd.startswith('kick'):
+                elif cmd.startswith('abort'):
                     address = cmd.split(' ')[1]
                     for wrk in workers:
                         if wrk.remote_address[0] == address:
-                            websockets.send(wrk, 'kick')
+                            await wrk.send('stop')
+                            logging.info('Aborted ' + str(wrk))
             except Exception as e:
                 print(e)
         # await asyncio.Future()
