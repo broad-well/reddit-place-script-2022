@@ -133,7 +133,7 @@ def set_pixel_and_check_ratelimit(
             conn.send(f'failed-to-place {x} {y} {color_index_in}')
             logging.info('informed director of failure to place')
         else:
-            logging.warn('could not report placement to director (disconnected)')
+            logging.warning('could not report placement to director (disconnected)')
             logging.error('cannot place colors without director connection. stopping.')
             directed_to_run = False
     else:
