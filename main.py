@@ -191,13 +191,14 @@ def set_pixel_and_check_ratelimit(
         actual_placed = response.json()['data']['act']['data'][0]['data']['userInfo']['username']
         logging.warning(f"{tag} {x} {y} last placed by {actual_placed}")
         if credentials_index != -1:
-            # was this me?
-            if actual_placed == json.loads(os.getenv("ENV_PLACE_USERNAME"))[
+            try_place = json.loads(os.getenv("ENV_PLACE_USERNAME"))[
                 credentials_index
-            ]:
+            ]
+            # was this me?
+            if actual_placed == try_place:
                 logging.info(f"{colorama.Fore.GREEN} Bot account {actual_placed} is effective! {colorama.Style.RESET_ALL}")
             else:
-                logging.warning(f"{colorama.Fore.RED} Bot account {actual_placed} is NOT effective! {colorama.Style.RESET_ALL}")
+                logging.warning(f"{colorama.Fore.RED} Bot account {try_place} is NOT effective! {colorama.Style.RESET_ALL}")
 
     # Reddit returns time in ms and we need seconds, so divide by 1000
     return waitTime / 1000
