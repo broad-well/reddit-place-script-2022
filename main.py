@@ -167,7 +167,7 @@ def set_pixel_and_check_ratelimit(
     # code.interact(local=locals())
 
     # Self-check: Is this effective?
-    time.sleep(10)
+    time.sleep(3)
     if success:
         logging.debug('self-checking if placement went through')
         response = rt.request("POST", url, headers=headers, data=json.dumps(
@@ -198,7 +198,7 @@ def set_pixel_and_check_ratelimit(
             if actual_placed == try_place:
                 logging.info(f"{colorama.Fore.GREEN} Bot account {actual_placed} is effective! {colorama.Style.RESET_ALL}")
             else:
-                logging.warning(f"{colorama.Fore.RED} Bot account {try_place} is NOT effective! {colorama.Style.RESET_ALL}")
+                logging.warning(f"{colorama.Fore.RED} Bot account {try_place} is possibly NOT effective! Last placed was actually {actual_placed} {colorama.Style.RESET_ALL}")
 
     # Reddit returns time in ms and we need seconds, so divide by 1000
     return waitTime / 1000
