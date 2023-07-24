@@ -201,6 +201,9 @@ def set_pixel_and_check_ratelimit(
                 else:
                     logging.warning(f"{colorama.Fore.RED} Bot account {try_place} is possibly NOT effective! Last placed was actually {actual_placed} {colorama.Style.RESET_ALL}")
         except Exception as e:
+            try_place = json.loads(os.getenv("ENV_PLACE_USERNAME"))[
+                credentials_index
+            ]
             logging.error(f'{e}')
             logging.info(f"{colorama.Fore.RED} Could not self-check on {try_place}, probably NOT effective {colorama.Style.RESET_ALL}")
 
