@@ -201,11 +201,11 @@ def set_pixel_and_check_ratelimit(
                 else:
                     logging.warning(f"{colorama.Fore.RED} Bot account {try_place} is possibly NOT effective! Last placed was actually {actual_placed} {colorama.Style.RESET_ALL}")
         except Exception as e:
-            try_place = json.loads(os.getenv("ENV_PLACE_USERNAME"))[
+            try_place2 = json.loads(os.getenv("ENV_PLACE_USERNAME"))[
                 credentials_index
             ]
             logging.error(f'{e}')
-            logging.info(f"{colorama.Fore.RED} Could not self-check on {try_place}, probably NOT effective {colorama.Style.RESET_ALL}")
+            logging.info(f"{colorama.Fore.RED} Could not self-check on {try_place2}, probably NOT effective {colorama.Style.RESET_ALL}")
 
     # Reddit returns time in ms and we need seconds, so divide by 1000
     return waitTime / 1000

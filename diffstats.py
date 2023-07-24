@@ -14,12 +14,20 @@ token = auth.get_access_token(input('reddit account username:'), input('reddit a
 
 
 history = []
-for i in range(9999):
-    unset = canvas_diff.unset_pixels(Image.open('watch.png'), Image.open(get_board(token, tag=2)), colors, 157, 632)
+for i in range(100000):
+    board_img = Image.open(get_board(token, tag=2))
+    unset = canvas_diff.unset_pixels(Image.open('watch.png'), board_img, colors, 157, 632)
     # unset = canvas_diff.unset_pixels(Image.open('/Users/michael/Downloads/pixil-frame-0-35.png'), Image.open(get_board(token, tag=0)), colors, 579, 246)
     print(datetime.now(), len(unset))
-    # if len(unset) >= 15:
-    #     os.system(f'say "{len(unset)}"')
+    if len(unset) >= 20:
+        os.system(f'say "M {len(unset)}"')
+
+    # board_img = Image.open(get_board(token, tag=3))
+    # unset = canvas_diff.unset_pixels(Image.open('wolverine_inside.png'), board_img, colors, 982, 696)
+    # # unset = canvas_diff.unset_pixels(Image.open('/Users/michael/Downloads/pixil-frame-0-35.png'), Image.open(get_board(token, tag=0)), colors, 579, 246)
+    # print(datetime.now(), len(unset))
+    # if len(unset) >= 20:
+    #     os.system(f'say "wolverine {len(unset)}"')
     # history.append([datetime.now().isoformat(), list(unset)])
     time.sleep(5)
 
